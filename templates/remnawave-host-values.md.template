@@ -13,9 +13,8 @@
 | Host | `${DOMAIN}` |
 | Path | `${XHTTP_PATH}` |
 | Mode | `packet-up` |
-| ALPN | `h2,http/1.1` |
+| ALPN | `h2` |
 | Fingerprint | `firefox` |
 | Allow insecure | `OFF` |
 | Flow | empty |
 | Internal Squad | `${SQUAD_NAME}` |
-
