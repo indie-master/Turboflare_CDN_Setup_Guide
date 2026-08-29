@@ -1,8 +1,9 @@
 {
   "xmux": {
-    "maxConcurrency": "1",
-    "hKeepAlivePeriod": 8,
-    "hMaxRequestTimes": "50"
+    "maxConcurrency": "4-8",
+    "hKeepAlivePeriod": 0,
+    "hMaxRequestTimes": "600-900",
+    "hMaxReusableSecs": "120-180"
   },
   "seqKey": "chunk_id",
   "noSSEHeader": true,
@@ -14,10 +15,7 @@
   "sessionIDLength": "16-32",
   "xPaddingObfsMode": true,
   "xPaddingPlacement": "header",
-  "scMaxBufferedPosts": 100,
-  "scMaxEachPostBytes": "3000000",
+  "scMaxEachPostBytes": "256000-512000",
   "sessionIDPlacement": "query",
-  "scMinPostsIntervalMs": "5-10",
-  "serverMaxHeaderBytes": 32768
+  "scMinPostsIntervalMs": "30-50"
 }
-
