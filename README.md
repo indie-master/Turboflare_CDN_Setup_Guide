@@ -494,7 +494,7 @@ Inbound xHTTP-TurboFlare not found in inboundsHashMap, creating new one
 | Host | значение `DOMAIN` |
 | Path | значение `XHTTP_PATH` |
 | Security Layer | `TLS` |
-| ALPN | `h2,http/1.1` |
+| ALPN | `h2` |
 | Fingerprint | `firefox` |
 | Allow insecure | выключено |
 | Flow | пусто |
@@ -517,9 +517,10 @@ build/<DOMAIN>/remnawave-xhttp-extra.json
 ```json
 {
   "xmux": {
-    "maxConcurrency": "1",
-    "hKeepAlivePeriod": 8,
-    "hMaxRequestTimes": "50"
+    "maxConcurrency": "4-8",
+    "hKeepAlivePeriod": 0,
+    "hMaxRequestTimes": "600-900",
+    "hMaxReusableSecs": "120-180"
   },
   "seqKey": "chunk_id",
   "noSSEHeader": true,
@@ -531,13 +532,13 @@ build/<DOMAIN>/remnawave-xhttp-extra.json
   "sessionIDLength": "16-32",
   "xPaddingObfsMode": true,
   "xPaddingPlacement": "header",
-  "scMaxBufferedPosts": 100,
-  "scMaxEachPostBytes": "3000000",
+  "scMaxEachPostBytes": "256000-512000",
   "sessionIDPlacement": "query",
-  "scMinPostsIntervalMs": "5-10",
-  "serverMaxHeaderBytes": 32768
+  "scMinPostsIntervalMs": "30-50"
 }
 ```
+
+Это профиль с пониженным пиковым расходом памяти и ротацией старых H2-соединений, рассчитанный в первую очередь на iOS-клиенты. Сервер принимает POST до `1000000` байт, а клиент отправляет меньшие блоки `256000-512000` байт. Значение `hKeepAlivePeriod: 0` не отключает keepalive: Xray использует стандартный H2-интервал, близкий к Chrome. Полное объяснение и сценарий проверки: [docs/IOS-STABILITY.md](docs/IOS-STABILITY.md).
 
 ## Проверка
 
