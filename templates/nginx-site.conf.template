@@ -1,0 +1,96 @@
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 127.0.0.1:${NGINX_INTERNAL_PORT} ssl proxy_protocol;
+    http2 on;
+
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/nginx/ssl/${DOMAIN}/origin.crt;
+    ssl_certificate_key /etc/nginx/ssl/${DOMAIN}/origin.key;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:TURBOFLARE_SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    set_real_ip_from 127.0.0.1;
+    set_real_ip_from ::1;
+    real_ip_header proxy_protocol;
+    real_ip_recursive on;
+
+    access_log /var/log/nginx/${DOMAIN}.access.log;
+    error_log  /var/log/nginx/${DOMAIN}.error.log warn;
+
+    location ^~ ${XHTTP_PATH} {
+        client_max_body_size 4m;
+
+        proxy_pass http://${XRAY_LISTEN_IP}:${XRAY_XHTTP_PORT};
+        proxy_http_version 1.1;
+
+        proxy_set_header Host ${DOMAIN};
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header Expect "";
+
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_cache off;
+        proxy_cache_bypass 1;
+        proxy_no_cache 1;
+
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
+        send_timeout 3600s;
+
+        add_header Cache-Control "private, no-store, no-cache, must-revalidate, max-age=0" always;
+        add_header Pragma "no-cache" always;
+        add_header Expires "0" always;
+    }
+
+    location = /healthz {
+        access_log off;
+        add_header Cache-Control "no-store" always;
+        return 204;
+    }
+
+    location = /favicon.ico {
+        access_log off;
+        return 204;
+    }
+
+    # Optional neutral endpoints for the cover website.
+    location = /api/video/stream {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        return 200 '{"status":"ok","stream":{"state":"idle","bitrate":0,"viewers":0},"version":"1.0.0"}';
+    }
+
+    location = /PubSubService {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        return 200 '{"service":"PubSubService","status":"healthy","subscriptions":0,"version":"1.0.0"}';
+    }
+
+    root ${COVER_ROOT};
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html =404;
+    }
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+}
+

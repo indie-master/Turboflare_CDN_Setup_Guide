@@ -1,0 +1,57 @@
+{
+  "tag": "${XRAY_INBOUND_TAG}",
+  "port": ${XRAY_XHTTP_PORT},
+  "listen": "${XRAY_LISTEN_IP}",
+  "protocol": "vless",
+  "settings": {
+    "clients": [],
+    "decryption": "none"
+  },
+  "sniffing": {
+    "enabled": true,
+    "routeOnly": false,
+    "destOverride": [
+      "http",
+      "tls",
+      "quic",
+      "fakedns"
+    ],
+    "metadataOnly": false
+  },
+  "streamSettings": {
+    "network": "xhttp",
+    "security": "none",
+    "sockopt": {
+      "trustedXForwardedFor": [
+        "X-Real-IP",
+        "X-Forwarded-For"
+      ]
+    },
+    "xhttpSettings": {
+      "host": "${DOMAIN}",
+      "mode": "packet-up",
+      "path": "${XHTTP_PATH}",
+      "extra": {
+        "xmux": {
+          "maxConcurrency": "1"
+        },
+        "seqKey": "chunk_id",
+        "noSSEHeader": true,
+        "noGRPCHeader": true,
+        "seqPlacement": "query",
+        "sessionIDKey": "auth",
+        "xPaddingBytes": "50-150",
+        "xPaddingMethod": "tokenish",
+        "sessionIDLength": "16-32",
+        "xPaddingObfsMode": true,
+        "xPaddingPlacement": "header",
+        "scMaxBufferedPosts": 100,
+        "scMaxEachPostBytes": "3000000",
+        "sessionIDPlacement": "query",
+        "scMinPostsIntervalMs": "5-10",
+        "serverMaxHeaderBytes": 32768
+      }
+    }
+  }
+}
+

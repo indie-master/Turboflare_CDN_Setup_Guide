@@ -1,487 +1,660 @@
+# TurboFlare CDN + Remnawave + Xray XHTTP + Nginx
 
-# Инструкция по настройке VPN сервера с cdn turboflare (аналог зарубежного cloudflare)
+Универсальная пошаговая инструкция по подключению VLESS XHTTP `packet-up` через TurboFlare CDN к Remnawave Node за существующим Nginx SNI-router.
+
+Репозиторий не содержит реальных доменов, IP-адресов, UUID, названий серверов, ключей или сертификатов. Все примеры используют зарезервированные значения `vpn.example.com` и `203.0.113.10`.
+
+> [!IMPORTANT]
+> Этот профиль протестирован на **Xray-core 26.7.28**. В рамках данной инструкции более старые версии ядра не поддерживаются.
 
 ## Содержание
 
-- [Инструкция по настройке VPN сервера с cdn turboflare (аналог зарубежного cloudflare)](#инструкция-по-настройке-vpn-сервера-с-cdn-turboflare-аналог-зарубежного-cloudflare)
-  - [Содержание](#содержание)
-  - [Первоначчальная настройка](#первоначчальная-настройка)
-    - [Начало](#начало)
-    - [Безопасность](#безопасность)
-      - [Начало](#начало-1)
-      - [Для обычных людей](#для-обычных-людей)
-      - [Для параноиков](#для-параноиков)
-      - [Для удобства](#для-удобства)
-  - [Настройка vless xhttp tls реверс прокси + cdn turboflare](#настройка-vless-xhttp-tls-реверс-прокси--cdn-turboflare)
-    - [Turboflare](#turboflare)
-      - [Регистрация](#регистрация)
-      - [Подключение cdn](#подключение-cdn)
-      - [Проверка](#проверка)
-      - [Настройки cdn](#настройки-cdn)
-    - [Настройки сервера (xray-core)](#настройки-сервера-xray-core)
-      - [Этап 1. xray на сервер](#этап-1-xray-на-сервер)
-      - [Этап 2. Серверный конфиг](#этап-2-серверный-конфиг)
-      - [Этап 3. Клиентский конфиг/ссылка](#этап-3-клиентский-конфигссылка)
-    - [Выбор заглушки и настройка веб-сервера](#выбор-заглушки-и-настройка-веб-сервера)
-      - [Этап 1. Выбор заглушки](#этап-1-выбор-заглушки)
-      - [Этап 2. Настройка веб-сервера](#этап-2-настройка-веб-сервера)
+- [Что получится](#что-получится)
+- [Быстрый запуск](#быстрый-запуск)
+- [Требования](#требования)
+- [Переменные](#переменные)
+- [Регистрация и настройка TurboFlare](#регистрация-и-настройка-turboflare)
+- [Origin-сертификат](#origin-сертификат)
+- [Интеграция с Nginx stream](#интеграция-с-nginx-stream)
+- [Настройка Xray в Remnawave](#настройка-xray-в-remnawave)
+- [Настройка Remnawave Node](#настройка-remnawave-node)
+- [Создание Internal Squad](#создание-internal-squad)
+- [Создание Host](#создание-host)
+- [Проверка](#проверка)
+- [Диагностика](#диагностика)
+- [Безопасность](#безопасность)
 
-## Первоначчальная настройка
+## Что получится
 
-### Начало
-
-Сперва подключаемся к серверу:
-
-```
-ssh root@ip
+```mermaid
+flowchart TD
+    A["Клиент: TLS + XHTTP"] --> B["TurboFlare edge"]
+    B --> C["Origin:443"]
+    C --> D["Nginx stream / SNI"]
+    D --> E["Nginx HTTPS :8443"]
+    E --> F["Xray XHTTP :40112"]
 ```
 
-Дальше поменяем пароль для суперпользователя, если вы при входе на сервер будете использовать Ctrl+C и Ctrl+V, лучшим паролем для вас будет сгенерированый следующей командой:
+Разделение TLS:
 
-```
-openssl rand -hex 128
-```
+- клиент видит доверенный публичный сертификат TurboFlare;
+- TurboFlare обращается к origin по HTTPS;
+- на origin используется отдельный self-signed сертификат;
+- Xray принимает незашифрованный HTTP только на `127.0.0.1`, после завершения TLS в Nginx.
 
-Меняем пароль:
+## Быстрый запуск
 
-```
-passwd
-```
+На origin-сервере:
 
-Полностью обновляем операционную систему и автоматически перезагружаем сервер по завершению:
+```bash
+git clone https://github.com/indie-master/Turboflare_CDN_Setup_Guide.git
+cd Turboflare_CDN_Setup_Guide
 
-```
-apt update && apt upgrade -y && reboot
-```
+cp .env.example .env
+nano .env
 
-Дальше снова подключаемся к серверу:
-
-```
-ssh root@ip
+chmod +x install.sh scripts/render.sh
+sudo bash install.sh
 ```
 
-### Безопасность
+Если установщик попросит добавить stream include, вставьте следующую строку **внутрь существующего** `map $ssl_preread_server_name $backend`:
 
-#### Начало
-
-Для начала изменим ssh порт:
-
-```
-nano /etc/ssh/sshd_config
+```nginx
+include /etc/nginx/stream-map.d/*.map;
 ```
 
-Ищем там строчку "# Port 22" и меняем её на любой порт:
+После этого снова выполните:
 
-![Порт](/image/Изменить%20порт.PNG)
-
-Выполняем перезагрузку ssh:
-
-```
-systemctl restart sshd
+```bash
+sudo bash install.sh
 ```
 
-или:
+Установщик:
 
-```
-systemctl restart ssh
-```
+1. проверяет переменные;
+2. генерирует готовые конфиги;
+3. создаёт self-signed origin-сертификат;
+4. устанавливает отдельный Nginx vhost;
+5. создаёт безопасную map-запись для существующего SNI-router;
+6. сохраняет резервные копии заменяемых файлов;
+7. выполняет `nginx -t` и reload.
 
-Проверяем что всё хорошо, открываем ещё терминал и пишем:
+Конфиги для панели Remnawave будут созданы в:
 
-```
-ssh root@ваш id -p ваш порт
-```
-
-Дальше есть 2 пути, один если вы параноик и очень боитесь за сервер (от этого способа как по мне нету смысла), второй для обычных пользователей
-
-#### Для обычных людей
-
-(ПОКА ЧТО МНЕ ЛЕНЬ)
-
-Тут мы настроим подключение к серверу по ssh ключам к сеперпользователю (root)
-
-#### Для параноиков
-
-(ПОКА ЧТО МНЕ ЛЕНЬ)
-
-Тут мы настроим подключение к серверу по ssh ключам к созданному нами пользователю (дальше подключение по паролю к root пользователю)
-
-#### Для удобства
-
-Тут тоже скоро кое что будет но:
-
-(ПОКА ЧТО МНЕ ЛЕНЬ)
-
-## Настройка vless xhttp tls реверс прокси + cdn turboflare
-
-### Turboflare
-
-#### Регистрация
-
-Для начала вам нужно зарегистрироваться в turboflare. Делается всё это очень легко вам потребуется только почта и номер телефон
-
-![turboflare-регистрация](/image/turboflare-регистрация.PNG)
-
-Почту и телефон нужно подтвердить
-
-![turboflare-регистрация(1)](/image/turboflare-регистрация(1).PNG)
-
-Дальше задаём пароль
-
-![turboflare-регистрация(2)](/image/turboflare-регистрация(2).PNG)
-
-И подтверждаем телефон
-
-![turboflare-регистрация(3)](/image/turboflare-регистрация(3).PNG)
-
-#### Подключение cdn
-
-После регистрации нас встречает следующий интерфейс
-
-![turboflare-подключение_cdn](/image/turboflare-подключение_cdn.PNG)
-
-(у вас там ничего не будет)
-
-Сразу скажу что для того чтобы использовать turboflare нужно делегировать ваш домен (поддомен не подойдёт)
-
-Жмём подключить сайт
-
-Дальше нужно будет написать ваш домен и ip адрес сервера с портом :443
-
-![turboflare-подключение_cdn(1)](/image/turboflare-подключение_cdn(1).PNG)
-
-Дальше вы идёте к своему регистратору домена и меняете ns записи на те что указаны в turboflare
-
-![turboflare-подключение_cdn(2)](/image/turboflare-подключение_cdn(2).PNG)
-
-После этого можно спокойно идти гулять на 24 часа, хоть и пишут они от 15 минут, у меня оба домена делегировались 23-24 часа.
-
-После того как вы подождали 24 часа вы заходите в turboflare и нажимаете на кнопочку "перевод трафика", всё ваш домен делегирован и трафик уже идёт через cdn turoflare.
-
-#### Проверка
-
-Если вы хотите вы можете проверить точно ли вам дали ip в бс, для этого нажмите в панеле turboflare на свой домен, дальше перейдите в настройки dns-зоны и пролистав ниже вы увидете свой домен и привязанный к нему ip. Дальше идёте в тг бота @Latency_Lab_bot и проверяете.
-
-![turboflare-проверка_cdn](/image/turboflare-проверка_cdn.PNG)
-
-#### Настройки cdn
-
-Из настроек в turboflare нету почти ничего, по этому тут и нечего говорить, просто сделайте вот так:
-
-![turboflare-настройки_cdn](/image/turboflare-настройки_cdn.PNG)
-
-(Обязательно укажите порт 443)
-
-### Настройки сервера (xray-core)
-
-Я настраивал голый xray поэтому буду расказывать про него, 3x-ui там вроде токже можно такое сделать, remnawave я не изучал так что хз что там, но там как там ноды и она впринцепи не лёгкая значит вы можете взять мой конфиг xray и сами допилить под remnawave.
-
-#### Этап 1. xray на сервер
-
-Для начала нам нужно скачать сам xray с этим нам поможет:
-
-```
-bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --version v26.7.28
+```text
+build/<DOMAIN>/xray-inbound.json
+build/<DOMAIN>/remnawave-xhttp-extra.json
+build/<DOMAIN>/remnawave-host-values.md
 ```
 
-И запускаем
+Короткая шпаргалка находится в [QUICKSTART.md](QUICKSTART.md).
 
-```
-systemctl enable xray
-```
+## Требования
 
-#### Этап 2. Серверный конфиг
+- отдельный зарегистрированный домен, который можно полностью делегировать TurboFlare;
+- VPS с публичным IPv4;
+- Debian или Ubuntu;
+- Nginx с модулем stream;
+- существующая Remnawave Panel и Remnawave Node;
+- Xray-core `26.7.28`;
+- клиенты с поддержкой актуального XHTTP, например Incy или Throne.
 
-Генерируем рандомный UUID клиента:
+TurboFlare требует делегирование доменной зоны. Обычный поддомен существующей зоны для этого сценария не подходит.
 
-```
-cat /proc/sys/kernel/random/uuid
-```
+## Переменные
 
-И редактируем конфиг xray
+Создайте локальный файл, который никогда не попадёт в Git:
 
-```
-nano /usr/local/etc/xray/config.json
-```
-
-```
-{
-  "log": { "loglevel": "warning" },
-  "inbounds": [
-    {
-      "tag": "vless-xhttp-cdn",
-      "listen": "127.0.0.1",
-      "port": 8081,
-      "protocol": "vless",
-      "settings": {
-        "clients": [{ "id": "СГЕНЕРИРОВАННЫЙ UUID" }],
-        "decryption": "none"
-      },
-      "sniffing": {
-        "enabled": true,
-        "destOverride": ["http", "tls", "quic"]
-      },
-      "streamSettings": {
-        "network": "xhttp",
-        "security": "none",
-        "xhttpSettings": {
-          "mode": "packet-up",
-          "path": "/static/getFile/video/segment.ts",
-          "extra": {
-            "xmux": {
-              "maxConcurrency": "1"
-            },
-            "seqKey": "chunk_id",
-            "sessionKey": "auth",
-            "noSSEHeader": true,
-            "noGRPCHeader": true,
-            "seqPlacement": "query",
-            "xPaddingBytes": "50-150",
-            "xPaddingMethod": "tokenish",
-            "sessionIDLength": "16-32",
-            "sessionPlacement": "query",
-            "xPaddingObfsMode": true,
-            "xPaddingPlacement": "header",
-            "scMaxBufferedPosts": 100,
-            "scMaxEachPostBytes": 3000000,
-            "scMinPostsIntervalMs": "5-10",
-            "serverMaxHeaderBytes": 32768
-          }
-        }
-      }
-    }
-  ],
-  "outbounds": [
-    { "tag": "direct", "protocol": "freedom" },
-    { "tag": "block", "protocol": "blackhole" }
-  ]
-}
+```bash
+cp .env.example .env
+nano .env
 ```
 
-Здесь вам нужно поменять только клиентский UUID
+Основные значения:
 
-Дальше вводим 2 команды:
+```dotenv
+DOMAIN=vpn.example.com
+ORIGIN_IP=203.0.113.10
+ORIGIN_PORT=443
 
-```
-xray run -test -config /usr/local/etc/xray/config.json
-```
-
-```
-systemctl restart xray
-```
-
-#### Этап 3. Клиентский конфиг/ссылка
-
-Клиентский конфиг будет выглядеть следующим образом:
-
-```
-{
-  "log": { "loglevel": "warning" },
-  "inbounds": [
-    {
-      "tag": "socks-in",
-      "listen": "127.0.0.1",
-      "port": 1080,
-      "protocol": "socks",
-      "settings": { "udp": true }
-    }
-  ],
-  "outbounds": [
-    {
-      "tag": "proxy",
-      "protocol": "vless",
-      "settings": {
-        "vnext": [{
-          "address": "ВАШ_ДОМЕН",
-          "port": 443,
-          "users": [{ "id": "СГЕНЕРИРОВАННЫЙ UUID", "encryption": "none" }]
-        }]
-      },
-      "streamSettings": {
-        "network": "xhttp",
-        "security": "tls",
-        "tlsSettings": {
-          "serverName": "ВАШ_ДОМЕН",
-          "alpn": ["h2", "http/1.1"],
-          "fingerprint": "firefox"
-        },
-        "xhttpSettings": {
-          "mode": "packet-up",
-          "path": "/static/getFile/video/segment.ts",
-          "extra": {
-            "xmux": {
-              "maxConcurrency": "1"
-            },
-            "seqKey": "chunk_id",
-            "sessionKey": "auth",
-            "noSSEHeader": true,
-            "noGRPCHeader": true,
-            "seqPlacement": "query",
-            "xPaddingBytes": "50-150",
-            "xPaddingMethod": "tokenish",
-            "sessionIDLength": "16-32",
-            "sessionPlacement": "query",
-            "xPaddingObfsMode": true,
-            "xPaddingPlacement": "header",
-            "scMaxBufferedPosts": 100,
-            "scMaxEachPostBytes": 3000000,
-            "scMinPostsIntervalMs": "5-10",
-            "serverMaxHeaderBytes": 32768
-          }
-        }
-      }
-    },
-    { "tag": "direct", "protocol": "freedom" }
-  ]
-}
+NGINX_INTERNAL_PORT=8443
+XRAY_LISTEN_IP=127.0.0.1
+XRAY_XHTTP_PORT=40112
+XRAY_INBOUND_TAG=xHTTP-TurboFlare
+XHTTP_PATH=/static/getFile/video/segment.ts
 ```
 
-Клиентская ссылка будет выглядеть так:
+| Переменная | Назначение |
+|---|---|
+| `DOMAIN` | Делегированный TurboFlare домен |
+| `ORIGIN_IP` | Публичный IP origin-сервера |
+| `ORIGIN_PORT` | Порт источника в TurboFlare, обычно `443` |
+| `NGINX_INTERNAL_PORT` | Локальный HTTPS-vhost за stream router |
+| `XRAY_LISTEN_IP` | Адрес Xray, оставлять `127.0.0.1` |
+| `XRAY_XHTTP_PORT` | Свободный локальный порт XHTTP inbound |
+| `XRAY_INBOUND_TAG` | Уникальный тег inbound в Config Profile |
+| `XHTTP_PATH` | Одинаковый путь в Xray, Nginx и Host |
+| `COVER_ROOT` | Каталог статического сайта-заглушки |
+| `STREAM_MAP_DIR` | Каталог map-фрагментов Nginx |
+| `CONFIG_PROFILE_NAME` | Название профиля для памятки Remnawave |
+| `SQUAD_NAME` | Название тестового Internal Squad |
 
+Не коммитьте `.env`. Он уже добавлен в `.gitignore`.
+
+Чтобы только сгенерировать файлы без установки:
+
+```bash
+./scripts/render.sh
 ```
-vless://СГЕНЕРИРОВАННЫЙ UUID@ВАШ_ДОМЕН:443?type=xhttp&path=%2Fstatic%2FgetFile%2Fvideo%2Fsegment.ts&mode=packet-up&security=tls&sni=ВАШ_ДОМЕН&alpn=h2,http%2F1.1&fp=firefox&extra=%7B%22xmux%22%3A%7B%22maxConcurrency%22%3A%221%22%2C%22hMaxRequestTimes%22%3A%2250%22%2C%22hKeepAlivePeriod%22%3A8%7D%2C%22seqKey%22%3A%22chunk_id%22%2C%22sessionKey%22%3A%22auth%22%2C%22noSSEHeader%22%3Atrue%2C%22noGRPCHeader%22%3Atrue%2C%22seqPlacement%22%3A%22query%22%2C%22xPaddingBytes%22%3A%2250-150%22%2C%22xPaddingMethod%22%3A%22tokenish%22%2C%22sessionIDLength%22%3A%2216-32%22%2C%22sessionPlacement%22%3A%22query%22%2C%22xPaddingObfsMode%22%3Atrue%2C%22xPaddingPlacement%22%3A%22header%22%2C%22scMaxBufferedPosts%22%3A100%2C%22scMaxEachPostBytes%22%3A3000000%2C%22scMinPostsIntervalMs%22%3A%225-10%22%2C%22serverMaxHeaderBytes%22%3A32768%7D#КОММЕНТАРИЙ
+
+## Регистрация и настройка TurboFlare
+
+Интерфейс провайдера может немного меняться, но последовательность остаётся прежней.
+
+### 1. Создание аккаунта
+
+1. Откройте сайт TurboFlare.
+2. Зарегистрируйтесь по электронной почте и номеру телефона.
+3. Подтвердите почту и телефон.
+4. Задайте пароль.
+5. Войдите в личный кабинет.
+
+![Форма регистрации TurboFlare](docs/images/turboflare-registration-email.png)
+
+![Подтверждение электронной почты с демонстрационным адресом](docs/images/turboflare-registration-confirm-email.jpg)
+
+![Создание пароля](docs/images/turboflare-registration-password.png)
+
+![Подтверждение номера телефона без номера](docs/images/turboflare-registration-phone.png)
+
+Не публикуйте в issue или скриншотах:
+
+- телефон и электронную почту;
+- идентификатор сайта;
+- origin IP;
+- полный список рабочих DNS-записей.
+
+### 2. Подключение сайта
+
+В разделе «Сайты» нажмите «Подключить новый сайт» и укажите домен из `DOMAIN`.
+
+![Обезличенный список сайтов TurboFlare](docs/images/turboflare-sites.jpg)
+
+После создания TurboFlare покажет набор NS-серверов. У регистратора домена замените текущие NS на значения **из своего кабинета**.
+
+Проверка делегирования:
+
+```bash
+dig +short NS "$DOMAIN"
 ```
 
-Но работать оно ещё не будет так как веб-сервер и реверс прокси мы ещё не настроили.
+Делегирование может занять от нескольких минут до суток. После появления статуса «Делегирована» или «Переведен» включите перевод трафика.
 
-### Выбор заглушки и настройка веб-сервера
+### 3. Настройка источника
 
-#### Этап 1. Выбор заглушки
+В настройках ресурса укажите:
 
-Вы можете выбрать для заглушки любой сайт, хоть написанный дип сиком, хоть како-нибудь open source проект, я же выберу filestash, просто потому что мне нужно облачное хранилище, а filestash ест мала ресурсов (по сравнению с тем же nextcloud) и относительно удобный
+| Параметр | Значение |
+|---|---|
+| Адрес источника | `<ORIGIN_IP>:443` |
+| HTTPS при запросе к источнику | включено |
+| Устаревший кэш при недоступности origin | выключено |
+| Учитывать query string | включено |
+| Учитывать cookies | включено |
 
-Я его буду ставить на сервер с помощью docker compose, поэтому нам потребуется docker и плагин docker-compose:
+![Обезличенные настройки origin](docs/images/turboflare-origin-settings.jpg)
 
+Nginx добавляет `Cache-Control: no-store` на XHTTP endpoint и отключает proxy cache. Учитывать query string и cookies полезно как дополнительная защита от смешивания сессий, потому что XHTTP передаёт session/sequence-параметры в query.
+
+### 4. DNS-зона
+
+Корневые A-записи CDN и `_acme-challenge` могут быть системными и заблокированными для удаления. Это нормально.
+
+![Обезличенная DNS-зона TurboFlare](docs/images/turboflare-dns-zone.jpg)
+
+Проверьте:
+
+```bash
+dig +short NS "$DOMAIN"
+dig +short A "$DOMAIN"
 ```
-sudo apt update && sudo apt install ca-certificates curl
+
+Публичный `A` должен возвращать edge IP TurboFlare, а не origin IP.
+
+## Origin-сертификат
+
+Для этой архитектуры не требуется выпускать Let's Encrypt сертификат на origin:
+
+- DNS-01 мешает системный `_acme-challenge` TurboFlare;
+- HTTP-01 проходит через CDN и может обрабатываться/кэшироваться edge-сервером;
+- клиент всё равно получает публичный сертификат TurboFlare;
+- origin-сертификат нужен только для зашифрованного CDN -> origin соединения.
+
+`install.sh` автоматически создаёт сертификат:
+
+```text
+/etc/nginx/ssl/<DOMAIN>/origin.crt
+/etc/nginx/ssl/<DOMAIN>/origin.key
 ```
 
-```
-sudo install -m 0755 -d /etc/apt/keyrings && curl -fsSL https://docker.com | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
-```
+Ручной эквивалент:
 
-```
-sudo apt install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+```bash
+sudo install -d -m 700 /etc/nginx/ssl/vpn.example.com
+
+sudo openssl req -x509 -nodes -newkey rsa:3072 -sha256 -days 3650 \
+  -keyout /etc/nginx/ssl/vpn.example.com/origin.key \
+  -out /etc/nginx/ssl/vpn.example.com/origin.crt \
+  -subj "/CN=vpn.example.com" \
+  -addext "subjectAltName=DNS:vpn.example.com,DNS:*.vpn.example.com" \
+  -addext "basicConstraints=critical,CA:FALSE" \
+  -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
+  -addext "extendedKeyUsage=serverAuth"
 ```
 
 Проверка:
 
-```
-docker compose version
-```
-
-Создаём структуру проекта:
-
-```
-mkdir -p ~/filestash/{data,config}
+```bash
+openssl x509 -in /etc/nginx/ssl/vpn.example.com/origin.crt \
+  -noout -subject -issuer -dates -ext subjectAltName
 ```
 
-```
-cd ~/filestash
-```
+Self-signed предупреждение при прямой проверке origin ожидаемо. Публичный запрос к TurboFlare должен проверяться без `-k`.
 
-Дальше редактируем docker-compose:
+## Интеграция с Nginx stream
 
-```
-nano docker-compose.yml
-```
+### Архитектура с существующим SNI-router
 
-```
-services:
-  filestash:
-    image: machines/filestash
-    container_name: filestash
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8334:8334"
-    environment:
-      - APPLICATION_URL=https://ваш_домен
-    volumes:
-      - ./data:/state
-```
+В инфраструктуре с несколькими Reality/Selfsteal/XHTTP/gRPC inbound публичный `443` уже занят одним stream server:
 
-Запускаем:
-
-```
-docker compose up -d
-```
-
-#### Этап 2. Настройка веб-сервера
-
-Я буду показывать на примере веб-сервера caddy, вы же можете выбрать и nginx
-
-Для начала нам нужно получить сертификат для нашего домена:
-
-```
-sudo apt install -y certbot
-```
-
-```
-sudo certbot certonly --standalone -d ваш_домен --email ваша@почта.com
-```
-
-Дальше ставим caddy
-
-```
-sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt update
-sudo apt install -y caddy
-```
-
-Caddy сам встанет как systemd-сервис и попытается запуститься на 80/443 с дефолтным конфигом — сразу останавливаем, пока не пропишем свой Caddyfile:
-
-```
-sudo systemctl stop caddy
-```
-
-Дальше мы должны дать доступ caddy к certbot, так как caddy по умолчанию не имеет root прав и не сможет прочитать сертификат:
-
-```
-apt install acl -y
-setfacl -R -m u:caddy:rX /etc/letsencrypt/live/
-setfacl -R -m u:caddy:rX /etc/letsencrypt/archive/
-setfacl -m u:caddy:x /etc/letsencrypt/
-```
-
-Дальше редактируем Caddy file:
-
-```
-sudo nano /etc/caddy/Caddyfile
-```
-
-```
-:443, ваш_домен {
-    tls /etc/letsencrypt/live/ваш_домен/fullchain.pem /etc/letsencrypt/live/ваш_домен/privkey.pem
-    header Strict-Transport-Security "max-age=15552000; includeSubDomains"
-
-    reverse_proxy /static/getFile/video/segment.ts* 127.0.0.1:8081 {
-        header_down Cache-Control "no-store, no-cache, must-revalidate"
-    }
-
-    reverse_proxy 127.0.0.1:8334
+```nginx
+server {
+    listen 443 reuseport;
+    proxy_pass $backend;
+    ssl_preread on;
+    proxy_protocol on;
+    proxy_socket_keepalive on;
 }
 ```
 
-Проверяем, заходим на свой домен там должен быть filestash:
+Не создавайте второй public `listen 443`.
 
-![filestash](/image/filestash.PNG)
+Внутри существующего блока:
 
-Задайте пароль от админки.
+```nginx
+map $ssl_preread_server_name $backend {
+    # Существующие маршруты остаются без изменений.
 
-Дальше вам нужно будет выбрать способ использования filestash:
+    include /etc/nginx/stream-map.d/*.map;
 
-![filestash(1)](/image/filestash(1).PNG)
+    default 127.0.0.1:8443;
+}
+```
 
-Я выберу 2, так как буду просто хранить файлы и раздавать доступ друзьям, вы можете использовать 1 если доступ никаму не будете раздавать
+Установщик создаст файл:
 
-Дальше сразу идёте в настройки и меняете параметр хост убрав https:// перед своим доменом:
+```text
+/etc/nginx/stream-map.d/turboflare.map
+```
 
-![filestash(2)](/image/filestash(2).PNG)
+Его содержимое:
 
--->
+```nginx
+vpn.example.com 127.0.0.1:8443; # TurboFlare CDN
+```
 
-![filestash(3)](/image/filestash(3).PNG)
+Полный обезличенный пример находится в [examples/nginx-stream-block.conf](examples/nginx-stream-block.conf).
 
-Всё! Возвращайтесь к клиентскому конфигу или ссылке и проверяйте в впн клиенте. На момент 29.07.2026 работает только в впн клиентах throne и incy
+### Почему отдельный include
+
+Установщик не должен автоматически переписывать существующий `nginx.conf`, потому что там могут находиться десятки маршрутов к другим inbound. Однократный `include` позволяет в дальнейшем разворачивать или менять TurboFlare Host без риска повредить остальную архитектуру.
+
+### HTTP/TLS vhost
+
+Шаблон находится в [templates/nginx-site.conf.template](templates/nginx-site.conf.template). Он:
+
+- слушает только `127.0.0.1:8443`;
+- принимает PROXY protocol от stream;
+- завершает TLS с origin-сертификатом;
+- проксирует только XHTTP path на Xray;
+- отключает buffering/cache;
+- отдаёт статическую заглушку на остальных путях.
+
+В отличие от конфигов Certbot, шаблон не подключает:
+
+```nginx
+include /etc/letsencrypt/options-ssl-nginx.conf;
+ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+```
+
+Это позволяет развернуть origin на чистом сервере без Certbot.
+
+Проверка:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+
+ss -lntp | grep -E ':443|:8443|:40112'
+```
+
+## Настройка Xray в Remnawave
+
+### 1. Версия ядра
+
+Установите или выберите Xray-core `26.7.28`. Именно с этой версией проверен набор используемых XHTTP-полей.
+
+### 2. Config Profile
+
+Откройте Config Profile, который назначен нужной ноде, и добавьте объект из:
+
+```text
+build/<DOMAIN>/xray-inbound.json
+```
+
+Готовый шаблон: [templates/xray-inbound.json.template](templates/xray-inbound.json.template).
+
+Ключевые параметры:
+
+```json
+{
+  "tag": "xHTTP-TurboFlare",
+  "port": 40112,
+  "listen": "127.0.0.1",
+  "protocol": "vless",
+  "settings": {
+    "clients": [],
+    "decryption": "none"
+  },
+  "streamSettings": {
+    "network": "xhttp",
+    "security": "none"
+  }
+}
+```
+
+`security: none` здесь правильно: TLS уже завершён в Nginx.
+
+![Обезличенный Config Profile](docs/images/remnawave-core-profile.jpg)
+
+### 3. Правильные XHTTP-поля
+
+В Xray `26.7.28` используются:
+
+```json
+"sessionIDKey": "auth",
+"sessionIDPlacement": "query"
+```
+
+Не используйте устаревшие/ошибочные варианты `sessionKey` и `sessionPlacement`.
+
+### 4. X-Forwarded-For
+
+Рабочая конфигурация:
+
+```json
+"sockopt": {
+  "trustedXForwardedFor": [
+    "X-Real-IP",
+    "X-Forwarded-For"
+  ]
+}
+```
+
+Это именно названия доверенных HTTP-заголовков. Xray принимает адрес из `X-Forwarded-For`, только если присутствует один из перечисленных trusted headers. Nginx устанавливает оба заголовка и является единственным локальным источником трафика на `127.0.0.1:40112`.
+
+### 5. Routing
+
+Если в `routing.rules` уже есть правила с явным `inboundTag`, добавьте новый тег в подходящее правило:
+
+```json
+{
+  "type": "field",
+  "inboundTag": [
+    "ANOTHER-CDN-INBOUND",
+    "xHTTP-TurboFlare"
+  ],
+  "outboundTag": "YOUR-OUTBOUND"
+}
+```
+
+Не копируйте чужой `outboundTag`: используйте существующий маршрут своей ноды. Если inbound-теги нигде явно не перечисляются, отдельное правило может не понадобиться.
+
+Сохраните Config Profile и примените изменения. После запуска:
+
+```bash
+ss -lntp | grep ':40112'
+```
+
+Ожидается listener на `127.0.0.1:40112`.
+
+Логи Remnawave Node:
+
+```bash
+cd /opt/remnanode
+docker compose logs --since=15m remnanode \
+  | grep -aEi 'xHTTP-TurboFlare|40112|error|failed'
+```
+
+`grep -a` нужен потому, что Docker log может определяться как бинарный поток.
+
+## Настройка Remnawave Node
+
+Откройте нужную ноду и выберите Config Profile, в который был добавлен `xHTTP-TurboFlare`.
+
+![Выбор обезличенного Config Profile](docs/images/remnawave-core-profile.jpg)
+
+После сохранения дождитесь статуса Node Online. При необходимости выполните однократный Force Restart Xray.
+
+Допустимое первое сообщение в журнале:
+
+```text
+Inbound xHTTP-TurboFlare not found in inboundsHashMap, creating new one
+```
+
+Это регистрация нового inbound во внутренней карте Remnawave, а не ошибка Xray.
+
+## Создание Internal Squad
+
+Для безопасного теста не публикуйте новый Host сразу всем пользователям.
+
+1. Создайте Internal Squad с именем `TurboFlare-Test`.
+2. Откройте выбор профилей/inbound.
+3. В нужном Config Profile отметьте только `xHTTP-TurboFlare`.
+4. Добавьте одного тестового пользователя.
+5. После проверки расширьте аудиторию.
+
+![Обезличенный Internal Squad](docs/images/remnawave-squad-card.jpg)
+
+![Выбор только xHTTP-TurboFlare](docs/images/remnawave-squad-inbound.jpg)
+
+## Создание Host
+
+Создайте новый Host и включите его видимость.
+
+### Основные параметры
+
+| Поле | Значение |
+|---|---|
+| Remark | `TurboFlare CDN` |
+| Config Profile | профиль с новым inbound |
+| Inbound | `xHTTP-TurboFlare` |
+| Address | значение `DOMAIN` |
+| Port | `443` |
+
+![Основные параметры Host](docs/images/remnawave-host-basic.jpg)
+
+### Расширенные параметры
+
+| Поле | Значение |
+|---|---|
+| SNI | значение `DOMAIN` |
+| Переопределить SNI из адреса | выключено |
+| Оставить SNI пустым | выключено |
+| Host | значение `DOMAIN` |
+| Path | значение `XHTTP_PATH` |
+| Security Layer | `TLS` |
+| ALPN | `h2,http/1.1` |
+| Fingerprint | `firefox` |
+| Allow insecure | выключено |
+| Flow | пусто |
+| Mode | `packet-up`, если поле присутствует |
+
+![Расширенные параметры Host](docs/images/remnawave-host-advanced.jpg)
+
+Host использует `TLS`, хотя серверный Xray inbound использует `security: none`: клиентский TLS заканчивается на Nginx/TurboFlare, а не внутри Xray.
+
+### XHTTP Extra
+
+Вставьте содержимое:
+
+```text
+build/<DOMAIN>/remnawave-xhttp-extra.json
+```
+
+Исходный шаблон: [templates/remnawave-xhttp-extra.json.template](templates/remnawave-xhttp-extra.json.template).
+
+```json
+{
+  "xmux": {
+    "maxConcurrency": "1",
+    "hKeepAlivePeriod": 8,
+    "hMaxRequestTimes": "50"
+  },
+  "seqKey": "chunk_id",
+  "noSSEHeader": true,
+  "noGRPCHeader": true,
+  "seqPlacement": "query",
+  "sessionIDKey": "auth",
+  "xPaddingBytes": "50-150",
+  "xPaddingMethod": "tokenish",
+  "sessionIDLength": "16-32",
+  "xPaddingObfsMode": true,
+  "xPaddingPlacement": "header",
+  "scMaxBufferedPosts": 100,
+  "scMaxEachPostBytes": "3000000",
+  "sessionIDPlacement": "query",
+  "scMinPostsIntervalMs": "5-10",
+  "serverMaxHeaderBytes": 32768
+}
+```
+
+## Проверка
+
+### 1. Listener
+
+```bash
+ss -lntp | grep -E ':443|:8443|:40112'
+```
+
+Ожидается:
+
+- public Nginx stream на `0.0.0.0:443`;
+- Nginx vhost на `127.0.0.1:8443`;
+- Xray на `127.0.0.1:40112`.
+
+### 2. Прямой origin
+
+```bash
+curl -4vk \
+  --resolve vpn.example.com:443:203.0.113.10 \
+  https://vpn.example.com/
+```
+
+Замените демонстрационные значения на свои. Ожидается загрузка cover page. Предупреждение self-signed ожидаемо.
+
+### 3. Через TurboFlare
+
+```bash
+curl -4v https://vpn.example.com/
+```
+
+Ожидается:
+
+- сертификат успешно проверяется без `-k`;
+- загружается та же cover page;
+- присутствуют CDN-заголовки наподобие `X-CDN-Edge-Id` и `X-CDN-Request-Id`.
+
+### 4. XHTTP endpoint
+
+```bash
+curl -4vk --http2 --max-time 8 \
+  'https://vpn.example.com/static/getFile/video/segment.ts?auth=0123456789abcdef&chunk_id=0'
+```
+
+Это не полноценный VLESS-запрос, поэтому допустимы HTTP 400, закрытие соединения или таймаут. Недопустимы:
+
+- `502 Bad Gateway`;
+- `413 Request Entity Too Large`;
+- главная cover page вместо XHTTP-ответа.
+
+### 5. Клиент
+
+1. Назначьте тестового пользователя в `TurboFlare-Test`.
+2. Обновите подписку в Incy или Throne.
+3. Выберите Host `TurboFlare CDN`.
+4. Подключитесь и проверьте сайты/внешний IP.
+5. Следите за Nginx и Remnawave logs.
+
+```bash
+tail -f /var/log/nginx/vpn.example.com.access.log
+```
+
+Старые версии sing-box, включая распространённую связку Podkop + sing-box `1.12.22`, могут не поддерживать этот XHTTP-профиль. Оставьте для таких устройств отдельные совместимые Hosts.
+
+## Диагностика
+
+Расширенная таблица: [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
+| Симптом | Проверка |
+|---|---|
+| Direct origin не работает | `nginx -t`, `ss`, stream map, firewall |
+| Direct origin работает, CDN нет | origin IP/port/HTTPS и статус делегирования |
+| `502` на XHTTP path | listener `127.0.0.1:40112` и Config Profile |
+| `413` | `client_max_body_size 4m` |
+| Host отсутствует в подписке | Host visibility, Config Profile, inbound, Internal Squad |
+| TLS error у клиента | Address/SNI/Host должны совпадать с `DOMAIN`, insecure выключен |
+| Соединение есть, трафика нет | routing rule и outbound tag |
+
+## Безопасность
+
+- Не публикуйте `.env`.
+- Не открывайте `40112` в firewall: Xray должен слушать только loopback.
+- Храните `/etc/nginx/ssl/<DOMAIN>/origin.key` с правами `600`.
+- Не публикуйте скриншоты с origin IP, UUID сайта, рабочими доменами, пользователями и названиями нод.
+- Не создавайте второй public `listen 443` при существующем stream router.
+- Не включайте `Allow insecure` в Remnawave Host.
+- Не используйте TLS 1.0/1.1 в HTTP vhost; шаблон включает только TLS 1.2/1.3.
+- Перед изменением существующего Nginx сохраняйте резервную копию.
+
+Все скриншоты в этом репозитории используют только демонстрационные данные.
+
+## Обновление и откат
+
+Установщик сохраняет предыдущие версии файлов с суффиксом:
+
+```text
+.bak-YYYYMMDD-HHMMSS
+```
+
+Для отката восстановите нужный файл и выполните:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+В Remnawave:
+
+1. выключите Host;
+2. уберите тестового пользователя из Squad;
+3. удаляйте inbound из Config Profile только после переключения пользователей.
+
+## Источники
+
+- Исходное руководство TurboFlare: <https://github.com/Artem-fix/Turboflare_CDN_Setup_Guide>
+- Поля XHTTP Xray-core: <https://github.com/XTLS/Xray-core/blob/c1958dba04ba065cd82a05b65bfe877e2323f0cc/infra/conf/transport_method.go>
+- Обработка `trustedXForwardedFor`: <https://github.com/XTLS/Xray-core/blob/c1958dba04ba065cd82a05b65bfe877e2323f0cc/common/protocol/http/headers.go>
+
+## Примечание
+
+Используйте конфигурацию только в рамках применимого законодательства и правил поставщика услуг.
