@@ -81,6 +81,8 @@ build/<DOMAIN>/remnawave-host-values.md
 build/<DOMAIN>/remnawave-xhttp-extra.json
 ```
 
+Для iPhone оставьте ALPN только `h2`. Сгенерированный Extra уже использует iOS-safe размеры POST, умеренный интервал и ротацию старых H2-соединений. Подробнее: [docs/IOS-STABILITY.md](docs/IOS-STABILITY.md).
+
 ## 6. Internal Squad
 
 1. Создать `TurboFlare-Test`.
