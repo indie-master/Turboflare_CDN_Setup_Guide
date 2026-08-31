@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+  <rect width="1200" height="560" fill="#f2f4f5"/>
+  <rect width="220" height="560" fill="#07181b"/>
+  <rect x="26" y="36" width="54" height="54" rx="14" fill="#ec1831"/><text x="43" y="72" font-family="Arial" font-size="28" fill="#fff">T</text>
+  <text x="94" y="72" font-family="Arial" font-size="27" font-weight="700" fill="#f4293e">TurboFlare</text>
+  <rect x="18" y="128" width="184" height="48" rx="12" fill="#10272a" stroke="#e52b32"/>
+  <text x="56" y="159" font-family="Arial" font-size="18" font-weight="700" fill="#fff">Сайты</text>
+  <rect x="260" y="52" width="900" height="112" rx="20" fill="#fff"/>
+  <text x="300" y="100" font-family="Arial" font-size="28" font-weight="700" fill="#101418">Подключённые сайты</text>
+  <rect x="900" y="82" width="220" height="48" rx="14" fill="#e52b32"/>
+  <text x="938" y="112" font-family="Arial" font-size="17" font-weight="700" fill="#fff">Подключить сайт</text>
+  <rect x="260" y="196" width="900" height="190" rx="20" fill="#fff"/>
+  <text x="300" y="242" font-family="Arial" font-size="16" font-weight="700" fill="#20252a">Домен</text>
+  <text x="650" y="242" font-family="Arial" font-size="16" font-weight="700" fill="#20252a">Идентификатор</text>
+  <text x="980" y="242" font-family="Arial" font-size="16" font-weight="700" fill="#20252a">Статус</text>
+  <line x1="300" y1="264" x2="1120" y2="264" stroke="#e5e8eb"/>
+  <text x="300" y="318" font-family="Arial" font-size="20" fill="#1c2228">cdn.example.com</text>
+  <text x="650" y="318" font-family="Arial" font-size="18" fill="#7b838c">demo-site-id</text>
+  <rect x="980" y="291" width="116" height="38" rx="19" fill="#e9faee"/>
+  <text x="1000" y="316" font-family="Arial" font-size="16" font-weight="700" fill="#16883b">Делегирован</text>
+  <text x="260" y="438" font-family="Arial" font-size="16" fill="#737d86">Используйте домен из переменной DOMAIN. Не публикуйте настоящий идентификатор сайта.</text>
+  <text x="260" y="510" font-family="Arial" font-size="15" fill="#8a939c">Схема интерфейса • демонстрационные данные</text>
+</svg>
+

@@ -9,9 +9,7 @@ set +a
 
 dig +short NS "$DOMAIN"
 dig +short A "$DOMAIN"
-
 ss -lntp | grep -E ':443|:8443|:40112'
-
 sudo nginx -t
 
 curl -4vk --resolve "$DOMAIN:443:$ORIGIN_IP" "https://$DOMAIN/"
@@ -27,116 +25,101 @@ docker compose logs --since=15m remnanode \
 
 ## `502 Bad Gateway`
 
-Nginx не может подключиться к Xray.
-
-```bash
-ss -lntp | grep ':40112'
-```
-
-Проверить:
+Nginx не подключается к Xray. Проверьте:
 
 - Config Profile сохранён и назначен ноде;
 - Xray запущен;
-- inbound слушает `127.0.0.1`;
-- порт в Xray совпадает с `proxy_pass` Nginx;
+- inbound слушает `127.0.0.1:40112`;
+- порт совпадает с `proxy_pass` Nginx;
 - контейнер Remnawave Node использует ожидаемую сетевую архитектуру.
 
 ## `413 Request Entity Too Large`
-
-В XHTTP location должен быть лимит выше `scMaxEachPostBytes`:
 
 ```nginx
 client_max_body_size 4m;
 ```
 
-## iOS отключает VPN или не восстанавливается после сна
+Серверный baseline допускает POST до 3 000 000 байт, хотя облегчённый клиент обычно отправляет 256–512 КБ.
 
-1. Используйте `mode: packet-up` и Extra из `templates/remnawave-xhttp-extra.json.template`.
-2. В Host оставьте ALPN только `h2`.
-3. Обновите ядро внутри самого iOS-клиента: версия ядра на серверной ноде не обновляет приложение.
-4. Для проверки временно отключите тяжёлые `geoip/geosite`-наборы и сложную клиентскую маршрутизацию.
-5. Проверьте отдельно: нагрузка 15 минут, блокировка экрана на 5 минут и переход Wi-Fi -> LTE -> Wi-Fi.
+## Мобильное соединение завершается после нагрузки или сна
 
-Если падает процесс приложения, а не только соединение, серверный таймаут это не исправит. Нужны название iOS-клиента, его версия, версия встроенного Xray и клиентский журнал. Подробности: [IOS-STABILITY.md](IOS-STABILITY.md).
+1. Используйте `packet-up` и Extra из `templates/remnawave-xhttp-extra.json.template`.
+2. Оставьте ALPN `h2`.
+3. Убедитесь, что клиент использует актуальный Xray-core.
+4. Обновите профиль после изменения Host.
+5. Проверьте нагрузку, блокировку экрана и смену сети отдельно.
+
+Если завершается процесс приложения, серверный timeout не устранит причину. Нужны версия приложения, встроенного ядра и клиентский журнал. См. [IOS-STABILITY.md](IOS-STABILITY.md).
+
+## GET-вариант не работает
+
+Для этого стенда это ожидаемо. Верните:
+
+- `mode: packet-up`;
+- POST по умолчанию — не задавайте `uplinkHTTPMethod: GET`;
+- `sessionIDPlacement: query`;
+- `seqPlacement: query`;
+- ключи `auth` и `chunk_id`;
+- исходный Xray inbound и облегчённый Host Extra из шаблонов.
+
+Nginx при возврате к POST/query менять не требуется.
 
 ## Публичный домен показывает origin-сертификат
 
-Запрос обходит TurboFlare и попадает прямо на origin.
-
-Проверить:
+Публичная A-запись должна указывать на edge TurboFlare.
 
 ```bash
 dig +short A "$DOMAIN"
 ```
 
-Публичный A должен указывать на edge TurboFlare. Не создавайте публичный A корневого домена непосредственно на origin.
-
 ## Direct origin работает, TurboFlare возвращает ошибку
 
-Проверить в панели:
+Проверьте:
 
-- точный origin IP;
-- порт `443`;
-- HTTPS к источнику включён;
-- трафик переведён;
-- делегирование завершено.
+- origin IP и порт `443`;
+- HTTPS к источнику;
+- завершение делегирования;
+- перевод трафика;
+- учёт query string;
+- отсутствие cache для XHTTP endpoint.
 
-## XHTTP path отдаёт cover page
+## Endpoint отдаёт статическую страницу
 
-Путь не совпадает в одном из трёх мест:
+`XHTTP_PATH` не совпадает в одном из трёх мест:
 
 1. `xhttpSettings.path` в Xray;
 2. `location ^~` в Nginx;
 3. Path в Remnawave Host.
 
-Сравнить с `.env`:
-
-```dotenv
-XHTTP_PATH=/static/getFile/video/segment.ts
-```
-
-## Клиент сообщает TLS error
-
-В Remnawave Host:
+## TLS error
 
 - Address = `DOMAIN`;
 - SNI = `DOMAIN`;
 - Host = `DOMAIN`;
 - Security Layer = TLS;
 - Allow insecure = OFF;
-- порт = 443.
-
-Проверить edge certificate:
+- Port = 443.
 
 ```bash
 openssl s_client -connect "$DOMAIN:443" -servername "$DOMAIN" </dev/null 2>/dev/null \
   | openssl x509 -noout -subject -issuer -dates
 ```
 
-## Соединение устанавливается, но трафика нет
+## Соединение создаётся без передачи данных
 
-Проверить routing rules. Если правила используют `inboundTag`, в них должен присутствовать новый tag:
+Если routing rules перечисляют `inboundTag`, добавьте:
 
 ```json
 "inboundTag": ["xHTTP-TurboFlare"]
 ```
 
-Проверить, что `outboundTag` существует и доступен на этой ноде.
+Убедитесь, что выбранный `outboundTag` существует на этой ноде.
 
-## Host не появляется в подписке
+## Host отсутствует в выдаче
 
-Проверить:
-
-- Host visibility включена;
-- выбран правильный Config Profile;
-- выбран `xHTTP-TurboFlare`;
-- Internal Squad содержит inbound;
-- пользователь добавлен в Squad;
-- подписка обновлена в клиенте.
+Проверьте Host visibility, Config Profile, выбранный inbound, Internal Squad и обновление профиля на клиенте.
 
 ## `grep: binary file matches`
-
-Это не ошибка Xray. Использовать текстовый режим:
 
 ```bash
 docker compose logs --tail=300 remnanode \
@@ -145,15 +128,13 @@ docker compose logs --tail=300 remnanode \
 
 ## Warning `creating new one`
 
-Сообщение:
-
 ```text
 Inbound xHTTP-TurboFlare not found in inboundsHashMap, creating new one
 ```
 
-допустимо при первой регистрации inbound. Ошибкой является последующий отказ запуска Xray или отсутствие listener.
+Первое такое сообщение означает регистрацию inbound. Ошибка — последующий отказ запуска Xray или отсутствие listener.
 
-## Проверка совпадения сгенерированных конфигов
+## Проверка сгенерированных файлов
 
 ```bash
 jq empty "build/$DOMAIN/xray-inbound.json"

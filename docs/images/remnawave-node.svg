@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560">
+  <rect width="1200" height="560" fill="#11161d"/>
+  <rect x="48" y="38" width="1104" height="484" rx="24" fill="#1b2129" stroke="#303844"/>
+  <text x="84" y="94" font-family="Arial" font-size="30" font-weight="700" fill="#eef4f7">Настройка тестовой ноды</text>
+  <text x="84" y="134" font-family="Arial" font-size="17" fill="#93a0ab">Демонстрационные значения</text>
+  <text x="84" y="204" font-family="Arial" font-size="17" fill="#b7c1ca">Название</text>
+  <rect x="84" y="220" width="1032" height="58" rx="11" fill="#242c35" stroke="#424d58"/>
+  <text x="106" y="257" font-family="Arial" font-size="20" fill="#eef3f6">LAB-NODE-01</text>
+  <text x="84" y="330" font-family="Arial" font-size="17" fill="#b7c1ca">Config Profile</text>
+  <rect x="84" y="346" width="780" height="58" rx="11" fill="#242c35" stroke="#35b9c8"/>
+  <text x="106" y="383" font-family="Arial" font-size="20" fill="#eef3f6">LAB_PROFILE</text>
+  <rect x="888" y="346" width="228" height="58" rx="12" fill="#0f8f80"/>
+  <text x="947" y="383" font-family="Arial" font-size="19" font-weight="700" fill="#fff">Сохранить</text>
+  <circle cx="104" cy="458" r="10" fill="#29c77b"/>
+  <text x="128" y="465" font-family="Arial" font-size="18" fill="#c4d0d8">После применения ожидается Node Online и listener 127.0.0.1:40112</text>
+  <text x="84" y="502" font-family="Arial" font-size="15" fill="#76828d">Схема интерфейса • реальные адреса и имена отсутствуют</text>
+</svg>
+

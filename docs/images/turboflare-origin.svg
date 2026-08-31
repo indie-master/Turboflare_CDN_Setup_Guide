@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610">
+  <rect width="1200" height="610" fill="#f3f5f6"/>
+  <rect x="40" y="34" width="1120" height="542" rx="22" fill="#fff" stroke="#dce1e5"/>
+  <text x="78" y="88" font-family="Arial" font-size="29" font-weight="700" fill="#171c20">Настройки источника</text>
+  <text x="78" y="122" font-family="Arial" font-size="16" fill="#737c84">Демонстрационный ресурс: cdn.example.com</text>
+  <g font-family="Arial">
+    <text x="78" y="184" font-size="17" font-weight="700" fill="#22272b">Адрес</text>
+    <rect x="78" y="200" width="1040" height="55" rx="9" fill="#fff" stroke="#aeb7bf"/>
+    <text x="98" y="235" font-size="19" fill="#303840">203.0.113.10:443</text>
+    <text x="78" y="302" font-size="18" fill="#22272b">HTTPS при запросе к источнику</text>
+    <rect x="1030" y="277" width="88" height="40" rx="20" fill="#1aaf62"/><circle cx="1097" cy="297" r="15" fill="#fff"/>
+    <text x="78" y="362" font-size="18" fill="#22272b">Устаревший cache при недоступности</text>
+    <rect x="1030" y="337" width="88" height="40" rx="20" fill="#cbd1d6"/><circle cx="1051" cy="357" r="15" fill="#fff"/>
+    <text x="78" y="422" font-size="18" fill="#22272b">Учитывать query string</text>
+    <rect x="1030" y="397" width="88" height="40" rx="20" fill="#1aaf62"/><circle cx="1097" cy="417" r="15" fill="#fff"/>
+    <text x="78" y="482" font-size="18" fill="#22272b">Учитывать cookies</text>
+    <rect x="1030" y="457" width="88" height="40" rx="20" fill="#1aaf62"/><circle cx="1097" cy="477" r="15" fill="#fff"/>
+  </g>
+  <text x="78" y="548" font-family="Arial" font-size="15" fill="#8a939c">203.0.113.10 — документационный адрес, не рабочий origin</text>
+</svg>
+

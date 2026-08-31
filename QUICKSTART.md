@@ -1,4 +1,6 @@
-# Быстрый запуск за 5 минут
+# Быстрый запуск лабораторного стенда
+
+> Материал предназначен для обучения и работы с собственной либо авторизованной инфраструктурой.
 
 ## 1. Переменные
 
@@ -9,14 +11,14 @@ cp .env.example .env
 nano .env
 ```
 
-Обязательно заменить:
+Замените демонстрационные значения:
 
 ```dotenv
-DOMAIN=vpn.example.com
+DOMAIN=cdn.example.com
 ORIGIN_IP=203.0.113.10
 ```
 
-Проверить локальные порты и при необходимости заменить:
+Проверьте локальные порты:
 
 ```dotenv
 NGINX_INTERNAL_PORT=8443
@@ -30,67 +32,48 @@ chmod +x install.sh scripts/render.sh
 sudo bash install.sh
 ```
 
-Если установщик попросил stream include, добавить внутрь существующего `map $ssl_preread_server_name $backend`:
+Если требуется stream include, добавьте внутрь существующего `map $ssl_preread_server_name $backend`:
 
 ```nginx
 include /etc/nginx/stream-map.d/*.map;
 ```
 
-Затем повторить:
-
-```bash
-sudo bash install.sh
-```
+Повторите `sudo bash install.sh`.
 
 ## 3. TurboFlare
 
-1. Добавить `DOMAIN` как новый сайт.
-2. Делегировать домен на NS из панели.
-3. Origin: `ORIGIN_IP:443`.
-4. HTTPS к источнику: ON.
-5. Stale cache: OFF.
-6. Query string: ON.
-7. Cookies: ON.
-8. Включить перевод трафика.
+1. Добавьте `DOMAIN` как новый сайт.
+2. Делегируйте зону на NS из кабинета.
+3. Укажите origin `ORIGIN_IP:443`.
+4. Включите HTTPS к источнику.
+5. Выключите stale cache.
+6. Включите учёт query string и cookies.
+7. Дождитесь завершения делегирования.
 
-## 4. Remnawave Config Profile
+## 4. Config Profile
 
-Скопировать объект:
-
-```text
-build/<DOMAIN>/xray-inbound.json
-```
-
-Применить профиль к ноде и проверить:
+Добавьте объект `build/<DOMAIN>/xray-inbound.json`, назначьте профиль ноде и проверьте:
 
 ```bash
 ss -lntp | grep ':40112'
 ```
 
-## 5. Remnawave Host
+## 5. Host
 
-Поля находятся в:
+Поля Host находятся в `build/<DOMAIN>/remnawave-host-values.md`.
 
-```text
-build/<DOMAIN>/remnawave-host-values.md
-```
+В XHTTP Extra вставьте `build/<DOMAIN>/remnawave-xhttp-extra.json`.
 
-В XHTTP Extra вставить:
-
-```text
-build/<DOMAIN>/remnawave-xhttp-extra.json
-```
-
-Для iPhone оставьте ALPN только `h2`. Сгенерированный Extra уже использует iOS-safe размеры POST, умеренный интервал и ротацию старых H2-соединений. Подробнее: [docs/IOS-STABILITY.md](docs/IOS-STABILITY.md).
+Используйте `packet-up`, POST по умолчанию, ALPN `h2` и query-размещение session/sequence. GET-варианты для этого стенда не применяются.
 
 ## 6. Internal Squad
 
-1. Создать `TurboFlare-Test`.
-2. Выбрать только `xHTTP-TurboFlare`.
-3. Добавить одного тестового пользователя.
-4. Обновить подписку в Incy/Throne.
+1. Создайте `TurboFlare-Lab`.
+2. Выберите только `xHTTP-TurboFlare`.
+3. Добавьте одну тестовую запись.
+4. Расширяйте состав после проверки.
 
-## 7. Проверки
+## 7. Проверка
 
 ```bash
 set -a
@@ -101,4 +84,5 @@ curl -4vk --resolve "$DOMAIN:443:$ORIGIN_IP" "https://$DOMAIN/"
 curl -4v "https://$DOMAIN/"
 ```
 
-Полная инструкция и диагностика находятся в [README.md](README.md).
+Подробности: [README.md](README.md). Мобильная диагностика: [docs/IOS-STABILITY.md](docs/IOS-STABILITY.md).
+

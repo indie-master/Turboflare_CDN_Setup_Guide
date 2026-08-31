@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <rect width="1200" height="700" fill="#11161d"/>
+  <rect x="42" y="34" width="1116" height="632" rx="24" fill="#1b2129" stroke="#303844"/>
+  <text x="78" y="88" font-family="Arial" font-size="30" font-weight="700" fill="#eef4f7">Host — демонстрационные значения</text>
+  <g font-family="Arial">
+    <text x="78" y="144" font-size="16" fill="#9eabb5">Address</text>
+    <rect x="78" y="158" width="500" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="98" y="192" font-size="19" fill="#edf3f6">cdn.example.com</text>
+    <text x="612" y="144" font-size="16" fill="#9eabb5">Port</text>
+    <rect x="612" y="158" width="180" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="634" y="192" font-size="19" fill="#edf3f6">443</text>
+    <text x="826" y="144" font-size="16" fill="#9eabb5">Inbound</text>
+    <rect x="826" y="158" width="290" height="54" rx="10" fill="#242c35" stroke="#28a9b8"/><text x="846" y="192" font-size="18" fill="#edf3f6">xHTTP-TurboFlare</text>
+
+    <text x="78" y="264" font-size="16" fill="#9eabb5">SNI</text>
+    <rect x="78" y="278" width="500" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="98" y="312" font-size="19" fill="#edf3f6">cdn.example.com</text>
+    <text x="612" y="264" font-size="16" fill="#9eabb5">Host</text>
+    <rect x="612" y="278" width="504" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="632" y="312" font-size="19" fill="#edf3f6">cdn.example.com</text>
+
+    <text x="78" y="384" font-size="16" fill="#9eabb5">Path</text>
+    <rect x="78" y="398" width="1038" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="98" y="432" font-size="19" fill="#edf3f6">/static/getFile/video/segment.ts</text>
+
+    <text x="78" y="506" font-size="16" fill="#9eabb5">Mode</text>
+    <rect x="78" y="520" width="210" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="99" y="554" font-size="18" fill="#edf3f6">packet-up</text>
+    <text x="326" y="506" font-size="16" fill="#9eabb5">Security</text>
+    <rect x="326" y="520" width="180" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="348" y="554" font-size="18" fill="#edf3f6">TLS</text>
+    <text x="544" y="506" font-size="16" fill="#9eabb5">ALPN</text>
+    <rect x="544" y="520" width="180" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="566" y="554" font-size="18" fill="#edf3f6">h2</text>
+    <text x="762" y="506" font-size="16" fill="#9eabb5">Fingerprint</text>
+    <rect x="762" y="520" width="210" height="54" rx="10" fill="#242c35" stroke="#46515c"/><text x="784" y="554" font-size="18" fill="#edf3f6">firefox</text>
+    <text x="1008" y="506" font-size="16" fill="#9eabb5">Insecure</text>
+    <rect x="1008" y="520" width="108" height="54" rx="27" fill="#303943"/><circle cx="1035" cy="547" r="20" fill="#fff"/>
+  </g>
+  <text x="78" y="624" font-family="Arial" font-size="15" fill="#76828d">Схема интерфейса • DOMAIN и XHTTP_PATH должны совпадать с .env</text>
+</svg>

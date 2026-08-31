@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="590" viewBox="0 0 1200 590">
+  <rect width="1200" height="590" fill="#11161d"/>
+  <rect x="48" y="36" width="1104" height="518" rx="24" fill="#1b2129" stroke="#303844"/>
+  <text x="84" y="92" font-family="Arial" font-size="30" font-weight="700" fill="#eef4f7">Internal Squad</text>
+  <rect x="84" y="126" width="1032" height="104" rx="17" fill="#242c35" stroke="#30404a"/>
+  <text x="112" y="169" font-family="Arial" font-size="23" font-weight="700" fill="#eef4f7">TurboFlare-Lab</text>
+  <text x="112" y="202" font-family="Arial" font-size="16" fill="#8fa0ab">1 тестовая запись • 1 inbound</text>
+  <text x="84" y="286" font-family="Arial" font-size="20" font-weight="700" fill="#d8e1e7">LAB_PROFILE</text>
+  <rect x="84" y="316" width="1032" height="76" rx="14" fill="#222a33" stroke="#36b8c6"/>
+  <rect x="112" y="339" width="28" height="28" rx="6" fill="#16a8b8"/><path d="M119 353l6 6 10-13" fill="none" stroke="#fff" stroke-width="3"/>
+  <text x="162" y="360" font-family="Arial" font-size="20" font-weight="700" fill="#eff5f8">xHTTP-TurboFlare</text>
+  <text x="920" y="360" font-family="Arial" font-size="17" fill="#44d3c5">40112</text>
+  <rect x="84" y="430" width="250" height="55" rx="12" fill="#0f8f80"/>
+  <text x="130" y="465" font-family="Arial" font-size="18" font-weight="700" fill="#fff">Сохранить выбор</text>
+  <text x="84" y="526" font-family="Arial" font-size="15" fill="#76828d">Для первого теста выбирается только один inbound.</text>
+</svg>
+

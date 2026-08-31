@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600">
+  <rect width="1200" height="600" fill="#f3f5f6"/>
+  <rect x="40" y="34" width="1120" height="532" rx="22" fill="#fff" stroke="#dce1e5"/>
+  <text x="78" y="88" font-family="Arial" font-size="29" font-weight="700" fill="#171c20">DNS-зона cdn.example.com</text>
+  <rect x="78" y="118" width="150" height="36" rx="18" fill="#e8f9ed"/><text x="100" y="142" font-family="Arial" font-size="16" font-weight="700" fill="#16883b">Делегирована</text>
+  <text x="78" y="204" font-family="Arial" font-size="16" font-weight="700" fill="#31373c">Тип</text>
+  <text x="180" y="204" font-family="Arial" font-size="16" font-weight="700" fill="#31373c">Имя</text>
+  <text x="610" y="204" font-family="Arial" font-size="16" font-weight="700" fill="#31373c">Значение</text>
+  <text x="1000" y="204" font-family="Arial" font-size="16" font-weight="700" fill="#31373c">Управление</text>
+  <line x1="78" y1="224" x2="1120" y2="224" stroke="#e3e6e9"/>
+  <g font-family="Arial" font-size="18" fill="#2c3339">
+    <text x="78" y="274">A</text><text x="180" y="274">cdn.example.com</text><text x="610" y="274">Используется CDN</text><text x="1000" y="274" fill="#8b939b">системная</text>
+    <line x1="78" y1="298" x2="1120" y2="298" stroke="#eef0f2"/>
+    <text x="78" y="348">A</text><text x="180" y="348">origin.cdn.example.com</text><text x="610" y="348">203.0.113.10</text><text x="1000" y="348" fill="#6b737b">изменяемая</text>
+    <line x1="78" y1="372" x2="1120" y2="372" stroke="#eef0f2"/>
+    <text x="78" y="422">CNAME</text><text x="180" y="422">_acme-challenge.cdn.example.com</text><text x="610" y="422">_acme-challenge.provider.example</text><text x="1000" y="422" fill="#8b939b">системная</text>
+  </g>
+  <text x="78" y="500" font-family="Arial" font-size="16" fill="#727b83">Не копируйте демонстрационные записи. Используйте значения из своего кабинета.</text>
+  <text x="78" y="538" font-family="Arial" font-size="15" fill="#8a939c">Схема интерфейса • зарезервированные домены и адреса</text>
+</svg>

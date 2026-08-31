@@ -32,6 +32,9 @@
       "mode": "packet-up",
       "path": "${XHTTP_PATH}",
       "extra": {
+        "xmux": {
+          "maxConcurrency": "1"
+        },
         "seqKey": "chunk_id",
         "noSSEHeader": true,
         "noGRPCHeader": true,
@@ -42,11 +45,13 @@
         "sessionIDLength": "16-32",
         "xPaddingObfsMode": true,
         "xPaddingPlacement": "header",
-        "scMaxBufferedPosts": 30,
-        "scMaxEachPostBytes": 1000000,
+        "scMaxBufferedPosts": 100,
+        "scMaxEachPostBytes": "3000000",
         "sessionIDPlacement": "query",
+        "scMinPostsIntervalMs": "5-10",
         "serverMaxHeaderBytes": 32768
       }
     }
   }
 }
+
